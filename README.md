@@ -3,7 +3,7 @@ The environment of final project "Perfect or Nothing" in course Probability2019@
 
 ## agent_define.py
 All you need to do is to rewrite the classes in agent_define.py
-* __init__() will create a class
+* \_\_init\_\_() will create a class
 * Since the created class will be tested several times, please initialize your variables inside restart()
 * In one simulation process, we will call decide() of your class N times, and each time with a value, you should decide whether to pick up the value or not
 
