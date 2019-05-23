@@ -1,8 +1,7 @@
 import numpy as np
 import agent_define
-import matplotlib.pyplot as plt
 
-SIMUL_TIMES = 10000
+SIMUL_TIMES = 50000
 PRINT_PER_SIMUL_TIMES = 1000
 N = 1000
 
