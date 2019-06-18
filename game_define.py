@@ -1,5 +1,8 @@
 import numpy as np
 import agent_define
+import concurrent.futures
+import time
+from copy import deepcopy
 
 SIMUL_TIMES = 50000
 PRINT_PER_SIMUL_TIMES = 1000
@@ -7,10 +10,14 @@ N = 1000
 
 class Game(object):
 
-    def __init__(self, setting, agents, k=0):
+    def __init__(self, setting, agent, k=0, workers=0):
         self.setting = setting
-        self.agents = agents
+        self.agent = agent
         self.k = k
+        if workers:
+            self.workers = workers
+        else:
+            self.workers = None
         assert setting in ['basic-1', 'basic-2', 'basic-3', \
                            'advanced-1-Uniform', 'advanced-1-Normal', 'advanced-2']
         assert (setting in ['basic-2', 'basic-3', 'advanced-2']) == (k != 0)
@@ -37,37 +44,25 @@ class Game(object):
             values += shift
         return values
 
-    def evaluate(self):
+    def process_one_simulation(self, agent):
+
+        agent = deepcopy(agent)
+        agent.restart()
+        chance = self.k if self.setting == 'basic-3' else 1
+        choice = set()
+
+        values = self.get_values()
+        for value_idx, value in enumerate(values):
+            if chance:
+                if agent.decide(value):
+                    choice.add(value_idx)
+                    chance -= 1
+            else:
+                break
         
-        score = np.zeros(len(self.agents))
+        return self.evaluate_one_simulation(values, choice)
 
-        for i in range(1, SIMUL_TIMES+1):
-
-            for agent in self.agents:
-                agent.restart()
-
-            chances = np.ones(len(self.agents), dtype=np.int32)
-            if self.setting == 'basic-3':
-                chances *= self.k
-            choices = [set() for _ in range(len(self.agents))]
-
-            values = self.get_values()
-            for value_idx, value in enumerate(values):
-                for agent_idx, (agent, chance, choice) in enumerate(zip(self.agents, chances, choices)):
-                    # still has chance deciding to pick
-                    if chance:
-                        result = agent.decide(value)
-                        if result:
-                            choice.add(value_idx)
-                            chances[agent_idx] -= 1
-            score += self.evaluate_one_simulation(values, choices)
-
-            if i % PRINT_PER_SIMUL_TIMES == 0:
-                print('Has simulated %d of %d times' % (i, SIMUL_TIMES))
-
-        return score / SIMUL_TIMES
-
-    def evaluate_one_simulation(self, values, choices):
+    def evaluate_one_simulation(self, values, choice):
 
         if self.setting == 'basic-2':
             ans = set(np.argsort(values)[-self.k:])
@@ -76,5 +71,16 @@ class Game(object):
 
         # print(values, choices, ans)
 
-        hit_list = np.array([int(bool(ans & choice)) for choice in choices])
-        return hit_list
+        is_hit = int(bool(ans & choice))
+        return is_hit
+
+    def evaluate(self):
+        
+        agents = [self.agent] * SIMUL_TIMES
+        score = 0
+        with concurrent.futures.ProcessPoolExecutor(max_workers=self.workers) as executor:
+            for simul_id, is_hit in enumerate(executor.map(self.process_one_simulation, agents), 1):
+                score += is_hit
+                # if simul_id % PRINT_PER_SIMUL_TIMES == 0:
+                #     print('Has simulated %d of %d times...' % (simul_id, SIMUL_TIMES))
+        return score / SIMUL_TIMES
