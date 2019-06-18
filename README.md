@@ -10,7 +10,7 @@ All you need to do is to rewrite the classes in agent_define.py
 ## main.py
 The method we test your scripts.
 Usage: `python3 main.py [-w WORKER_NUM]`
-The default `WORKER_NUM` is 5 times of the number of CPU.
+The default `WORKER_NUM` is 5 times of the number of processors.
 
 ## game_define.py
 Define the game.
